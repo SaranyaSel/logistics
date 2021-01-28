@@ -1,0 +1,35 @@
+<h2>Allocation</h2>
+<form [formGroup]="allForm">
+  <mat-form-field>
+    <mat-label>Container</mat-label>
+    <input matInput (keyup)="applyFilter()" placeholder="Filter" formControlName="containerNo">
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Size</mat-label>
+    <mat-select [(value)]="selectsize"  (selectionChange)="applyFilter()"  placeholder="Filter" formControlName="size">
+      <mat-option *ngFor="let sz of size" [value]="sz">{{sz}}</mat-option>
+    </mat-select>
+  </mat-form-field>
+</form>
+<table mat-table [dataSource]="dataSource" matSort>
+
+  <ng-container matColumnDef="ContainerNumber">
+    <th mat-header-cell *matHeaderCellDef mat-sort-header>ContainerNumber </th>
+    <td mat-cell *matCellDef="let allData"> {{allData.ContainerNumber}} </td>
+  </ng-container>
+
+  <ng-container matColumnDef="Size">
+    <th mat-header-cell *matHeaderCellDef mat-sort-header>Size </th>
+    <td mat-cell *matCellDef="let allData"> {{allData.Size}} </td>
+  </ng-container>
+
+
+  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+  <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+
+
+</table>
+
+
+
+

@@ -1,0 +1,21 @@
+table {
+  width: 90%;
+  margin:2% auto;
+}
+h2{
+  text-align: center;
+}
+
+.mat-form-field {
+  font-size: 14px;
+  width: 90%;
+  display: flex;
+  justify-content: center;
+}
+th{
+  cursor: pointer;
+  .mat-sort-header-sorted {
+    color: black;
+  }
+}
+
