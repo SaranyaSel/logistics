@@ -2,14 +2,15 @@ import {  Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { ApiService } from '../api.service';
 import { Subscription } from 'rxjs/internal/Subscription';
-import { debounceTime } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { Items } from '../items';
+import { Subject } from 'rxjs/internal/Subject';
 
 @Component({
   selector: 'app-impdata',
   templateUrl: './impdata.component.html',
-  styleUrls: ['./impdata.component.scss']
+  styleUrls: ['./impdata.component.scss'],
 })
 export class ImpdataComponent implements OnInit, OnDestroy {
   @Input() logis: Items[];
@@ -17,52 +18,71 @@ export class ImpdataComponent implements OnInit, OnDestroy {
   dataA: any;
   size: [];
   isLoading = false;
-  private apiSub: Subscription;
   dataSource: MatTableDataSource<Items>;
   impForm: FormGroup;
   containerNoz = '';
   sizez: number;
+  valCN: any;
   selectsize: any;
-  constructor(public apiService: ApiService) { }
-
+  protected ngUnsubscribe: Subject<void> = new Subject<void>();
+  constructor(public apiService: ApiService) {}
 
   displayedColumns: string[] = ['ContainerNumber', 'Size'];
 
-
-
   ngOnInit() {
     this.impForm = new FormGroup({
-      containerNo: new FormControl(''),
+      containerNo: new FormControl('', Validators.pattern('^[a-zA-Z ]+$')),
       size: new FormControl(''),
     });
-    this.apiService.getImport().subscribe((data) => {
-      if (data) {
-        this.dataI = data;
-        this.dataA = this.dataI.items;
-        this.size = this.dataA
-          .map((item) => item.Size)
-          .filter((value, index, self) => self.indexOf(value) === index);
-        this.dataSource = new MatTableDataSource<Items>(this.dataA);
-        this.dataSource.filterPredicate = this.getFilterPredicate();
-      }
-    },
-    (error) => {
-      console.log(error);
-    },
-    () => {
-      console.log('completed');
-    });
+    this.apiService
+      .getImport()
+      .pipe(takeUntil(this.ngUnsubscribe))
+      .subscribe(
+        (data) => {
+          if (data) {
+            this.dataI = data;
+            this.dataA = this.dataI.items;
+            this.size = this.dataA
+              .map((item) => item.Size)
+              .filter((value, index, self) => self.indexOf(value) === index);
+            this.dataSource = new MatTableDataSource<Items>(this.dataA);
+            this.dataSource.filterPredicate = this.getFilterPredicate();
+          }
+        },
+        (error) => {
+          console.log(error);
+        },
+        () => {
+          console.log('completed');
+        }
+      );
+    setTimeout(() => {
+      console.log('timeout');
+      this.ngUnsubscribe.next();
+      this.ngUnsubscribe.complete();
+    }, 100000);
   }
   applyFilter() {
-    const cn = this.impForm.get('containerNo').value;
-    const sz = this.selectsize;
-    this.containerNoz = cn === null ? '' : cn;
-    this.sizez = (sz === null || sz === '' || sz === undefined) ? '' : sz;
-    const filterValue = this.containerNoz + '$' + this.sizez ;
-    this.dataSource.filter = filterValue.trim().toLowerCase();
-  }
-  mysel() {
-    console.log(this.selectsize);
+    let cn;
+    cn = this.impForm.get('containerNo').value;
+    this.impForm
+      .get('containerNo')
+      .valueChanges.pipe(debounceTime(400), distinctUntilChanged())
+      .subscribe((value) => {
+        this.valCN = value;
+        // console.log(this.valCN);
+      });
+    setTimeout(() => {
+      if (this.valCN) {
+        cn = this.valCN;
+      }
+      // console.log(cn);
+      const sz = this.selectsize;
+      this.containerNoz = cn === null || cn === undefined ? '' : cn;
+      this.sizez = sz === null || sz === '' || sz === undefined ? '' : sz;
+      const filterValue = this.containerNoz + '$' + this.sizez;
+      this.dataSource.filter = filterValue.trim().toLowerCase();
+    }, 700);
   }
   getFilterPredicate() {
     return (row: Items, filters: string) => {
@@ -77,12 +97,11 @@ export class ImpdataComponent implements OnInit, OnDestroy {
       matchFilter.push(filterCN);
       matchFilter.push(filterS);
       return matchFilter.every(Boolean);
-
     };
   }
   ngOnDestroy() {
-    console.log('unsub');
-    this.apiSub.unsubscribe();
+    this.ngUnsubscribe.next();
+    // This completes the subject properlly.
+    this.ngUnsubscribe.complete();
   }
-
 }
